@@ -7,9 +7,10 @@ import { ProductsAppLayersStack } from '../lib/productsAppLayers.stack';
 
 const app = new cdk.App();
 
+//Put your amazon environment credentials here
 const env: cdk.Environment = {
-    account: "243626255914",
-    region: "us-east-1"
+    account: "ACCOUNT_ID",
+    region: "ACCOUNT_REGION"
 }
 
 const tags = {
