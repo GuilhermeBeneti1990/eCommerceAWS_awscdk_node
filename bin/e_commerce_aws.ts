@@ -2,15 +2,18 @@
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { ProductsAppStack } from '../lib/productsApp-stack'
-import { ECommerceApiStack } from '../lib/ecommerceApi-stack'
+import { ApiGatewayAppStack } from '../lib/apiGateway-stack'
 import { ProductsAppLayersStack } from '../lib/productsAppLayers.stack';
+import { EventsDdbStack } from '../lib/eventsDdb-stack';
 
 const app = new cdk.App();
 
 //Put your amazon environment credentials here
+//account: "243626255914",
+//region: "us-east-1"
 const env: cdk.Environment = {
-    account: "ACCOUNT_ID",
-    region: "ACCOUNT_REGION"
+    account: "243626255914",
+    region: "us-east-1"
 }
 
 const tags = {
@@ -23,17 +26,24 @@ const productsAppLayersStack = new ProductsAppLayersStack(app, "ProductsAppLayer
     env
 })
 
+const eventsDdbStack = new EventsDdbStack(app, "EventsDdb", {
+    tags,
+    env
+})
+
 const productsAppStack = new ProductsAppStack(app, "ProductsApp", {
+    eventsDdb: eventsDdbStack.table,
     tags,
     env
 })
 productsAppStack.addDependency(productsAppLayersStack)
+productsAppStack.addDependency(eventsDdbStack)
 
-const ecommerceApiStack = new ECommerceApiStack(app, "EcommerceApi", {
+const apiGatewayAppStack = new ApiGatewayAppStack(app, "EcommerceApi", {
     productsFetchHandler: productsAppStack.productsFetchHandler,
     productsAdminHandler: productsAppStack.productsAdminHandler,
     tags,
     env
 })
 
-ecommerceApiStack.addDependency(productsAppStack)
+apiGatewayAppStack.addDependency(productsAppStack)

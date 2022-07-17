@@ -1,14 +1,35 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
 import { Product, ProductRepository } from "/opt/nodejs/productsLayer";
-import { DynamoDB } from "aws-sdk"
+import { DynamoDB, Lambda } from "aws-sdk"
+import { ProductEvent, ProductEventType } from "/opt/nodejs/productsEventsLayer";
 import * as awsXRAY from "aws-xray-sdk"
 
 awsXRAY.captureAWS(require("aws-sdk"))
 
 const productsDdb = process.env.PRODUCTS_DDB!
+const productsEventsFunctionName = process.env.PRODUCTS_EVENTS_FUNCTION_NAME!
 const ddbClient = new DynamoDB.DocumentClient()
+const lambdaClient = new Lambda()
 
 const productRepository = new ProductRepository(ddbClient, productsDdb)
+
+function sendProductEvent(product: Product, eventType: ProductEventType, email: string, lambdaRequestId: string) {
+    const event: ProductEvent = {
+        email,
+        eventType,
+        productCode: product.code,
+        productId: product.id,
+        productPrice: product.price,
+        requestId: lambdaRequestId
+    }
+
+    return lambdaClient.invoke({
+        FunctionName: productsEventsFunctionName,
+        Payload: JSON.stringify(event),
+        // InvocationType: 'ResquestResponse' // sync
+        InvocationType: 'Event' // async
+    }).promise()
+}
 
 export async function handler(event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
 
@@ -27,6 +48,9 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
 
         const productCreated = await productRepository.create(product)
 
+        const response = await sendProductEvent(productCreated, ProductEventType.CREATED, 'guilherme@email.com', lambdaRequestId)
+        console.log(response)
+
         return {
             statusCode: 201,
             body: JSON.stringify(productCreated)
@@ -41,6 +65,10 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
 
             try {
                 const productUpdated = await productRepository.updateProduct(productId, product)
+
+                const response = await sendProductEvent(productUpdated, ProductEventType.UPDATED, 'guilherme@email.com', lambdaRequestId)
+                console.log(response)
+
                 return {
                     statusCode: 200,
                     body: JSON.stringify(productUpdated)
@@ -57,6 +85,10 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
 
             try {
                 const product = await productRepository.deleteProduct(productId)
+
+                const response = await sendProductEvent(product, ProductEventType.DELETED, 'guilherme@email.com', lambdaRequestId)
+                console.log(response)
+
                 return {
                     statusCode: 200,
                     body: JSON.stringify(product)
