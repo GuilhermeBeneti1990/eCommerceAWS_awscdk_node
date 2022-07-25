@@ -5,13 +5,17 @@ import { ProductsAppStack } from '../lib/productsApp-stack'
 import { ApiGatewayAppStack } from '../lib/apiGateway-stack'
 import { ProductsAppLayersStack } from '../lib/productsAppLayers.stack';
 import { EventsDdbStack } from '../lib/eventsDdb-stack';
+import { OrdersAppLayersStack } from '../lib/ordersAppLayers-stack';
+import { OrdersAppStack } from '../lib/ordersApp-stack';
 
 const app = new cdk.App();
 
 //Put your amazon environment credentials here
+//account: "243626255914",
+//region: "us-east-1"
 const env: cdk.Environment = {
-    account: "ACCOUNT_CODE",
-    region: "ACCOUNT_REGION"
+    account: "243626255914",
+    region: "us-east-1"
 }
 
 const tags = {
@@ -37,11 +41,27 @@ const productsAppStack = new ProductsAppStack(app, "ProductsApp", {
 productsAppStack.addDependency(productsAppLayersStack)
 productsAppStack.addDependency(eventsDdbStack)
 
-const apiGatewayAppStack = new ApiGatewayAppStack(app, "EcommerceApi", {
+const ordersAppLayersStack = new OrdersAppLayersStack(app, 'OrdersAppLayers', {
+    tags,
+    env
+})
+
+const ordersAppStack = new OrdersAppStack(app, 'OrdersApp', {
+    tags,
+    env,
+    productsDdb: productsAppStack.productsDdb
+})
+
+ordersAppStack.addDependency(productsAppStack)
+ordersAppStack.addDependency(ordersAppLayersStack)
+
+const apiGatewayAppStack = new ApiGatewayAppStack(app, "ApiGatewayApp", {
     productsFetchHandler: productsAppStack.productsFetchHandler,
     productsAdminHandler: productsAppStack.productsAdminHandler,
+    ordersHandler: ordersAppStack.ordersHandler,
     tags,
     env
 })
 
 apiGatewayAppStack.addDependency(productsAppStack)
+apiGatewayAppStack.addDependency(ordersAppStack)

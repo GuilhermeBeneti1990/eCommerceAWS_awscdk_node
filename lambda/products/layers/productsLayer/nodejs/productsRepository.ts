@@ -3,7 +3,7 @@ import { v4 as uuid } from "uuid"
 
 export interface Product {
     id: string
-    productsName: string
+    productName: string
     code: string
     price: number
     model: string
@@ -42,6 +42,26 @@ export class ProductRepository {
         }
     }
 
+    async getProductsByIds(productsIds: string[]): Promise<Product[]> {
+        const keys: { id: string }[] = []
+
+        productsIds.forEach(productId => {
+            keys.push({
+                id: productId
+            })
+        })
+
+        const data = await this.ddbClient.batchGet({
+            RequestItems: {
+                [this.productsDdb]: {
+                    Keys: keys
+                }
+            }
+        }).promise()
+
+        return data.Responses![this.productsDdb] as Product[]
+    }
+
     async create(product: Product): Promise<Product> {
         product.id = uuid()
         await this.ddbClient.put({
@@ -62,7 +82,7 @@ export class ProductRepository {
             ReturnValues: 'UPDATED_NEW',
             UpdateExpression: 'set productName = :n, code = :c, price = :p, model = :m, productUrl = :u',
             ExpressionAttributeValues: {
-                ':n': product.productsName,
+                ':n': product.productName,
                 ':c': product.code,
                 ':p': product.price,
                 ':m': product.model,

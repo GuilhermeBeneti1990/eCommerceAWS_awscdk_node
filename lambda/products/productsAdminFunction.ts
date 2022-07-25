@@ -77,7 +77,7 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
                 console.error((<Error>ConditionalCheckFailedException).message)
                 return {
                     statusCode: 404,
-                    body: 'Product not found'
+                    body: (<Error>ConditionalCheckFailedException).message
                 }
             }
         } else if(httpMethod === 'DELETE') {
