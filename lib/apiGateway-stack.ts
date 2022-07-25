@@ -25,7 +25,41 @@ export class ApiGatewayAppStack extends cdk.Stack {
         productIdResource.addMethod("GET", productsFetchIntegration)
 
         //[POST] /products
-        productsResource.addMethod("POST", productsAdminIntegration)
+        const productRequestValidator = new apigateway.RequestValidator(this, 'ProductRequestValidator', {
+            restApi: api,
+            requestValidatorName: 'ProductRequestValidator',
+            validateRequestBody: true
+        })
+
+        const productModel = new apigateway.Model(this, "ProductModel", {
+            modelName: 'ProductModel',
+            restApi: api,
+            schema: {
+                type: apigateway.JsonSchemaType.OBJECT,
+                properties: {
+                    productName: {
+                        type: apigateway.JsonSchemaType.STRING
+                    },
+                    price: {
+                        type: apigateway.JsonSchemaType.STRING
+                    },
+                    code: {
+                        type: apigateway.JsonSchemaType.STRING
+                    },
+                },
+                required: [
+                    "productName",
+                    "price",
+                    "code"
+                ]
+            }
+        })
+        productsResource.addMethod("POST", productsAdminIntegration, {
+            requestValidator: productRequestValidator,
+            requestModels: {
+                "application/json": productModel
+            }
+        })
 
         //[PUT] /products/{id}
         productIdResource.addMethod("PUT", productsAdminIntegration)
@@ -45,7 +79,47 @@ export class ApiGatewayAppStack extends cdk.Stack {
         ordersResource.addMethod("GET", ordersIntegration)
 
         // [POST] /orders
-        ordersResource.addMethod("POST", ordersIntegration)
+        const orderRequestValidator = new apigateway.RequestValidator(this, 'OrderRequestValidator', {
+            restApi: api,
+            requestValidatorName: 'OrderRequestValidator',
+            validateRequestBody: true
+        })
+
+        const orderModel = new apigateway.Model(this, "OrderModel", {
+            modelName: 'OrderModel',
+            restApi: api,
+            schema: {
+                type: apigateway.JsonSchemaType.OBJECT,
+                properties: {
+                    email: {
+                        type: apigateway.JsonSchemaType.STRING
+                    },
+                    productIds: {
+                        type: apigateway.JsonSchemaType.ARRAY,
+                        minItems: 1,
+                        items: {
+                            type: apigateway.JsonSchemaType.STRING
+                        }
+                    },
+                    payment: {
+                        type: apigateway.JsonSchemaType.STRING,
+                        enum: ["CASH", "DEBIT_CARD", "CREDIT_CARD"]
+                    }
+                },
+                required: [
+                    "email",
+                    "productIds",
+                    "payment"
+                ]
+            }
+        })
+
+        ordersResource.addMethod("POST", ordersIntegration, {
+            requestValidator: orderRequestValidator,
+            requestModels: {
+                "application/json": orderModel
+            }
+        })
 
         // [DELETE] /orders?email=guilherme@email.com&orderId=123
         const orderDeleteValidator = new apigateway.RequestValidator(this, 'OrderDeleteValidator', {
